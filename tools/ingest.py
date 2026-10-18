@@ -1,0 +1,133 @@
+"""Ingest the project's documents into the vector store.
+
+Picks up everything under data/docs/. README.md, docs/architecture.md and
+docs/guides/rag-walkthrough.md are added only with --with-meta: the golden datasets are labelled
+against data/docs alone, so documentation edits must not change the corpus
+they are evaluated on.
+
+Usage:
+    python tools/ingest.py
+    python tools/ingest.py --path data/docs --concurrency 8
+    python tools/ingest.py --path hr/ --tenant acme --groups hr,managers
+
+Without --tenant/--groups, documents go to DEFAULT_TENANT and are public.
+"""
+from __future__ import annotations
+
+import argparse
+import asyncio
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "backend" / "src"))
+
+from litmus.retrieval.ingest import enqueue_document  # noqa: E402
+from litmus.retrieval.ingest_parsers import SUPPORTED_EXTENSIONS  # noqa: E402
+
+DEFAULT_DOCS = ROOT / "data" / "docs"
+META_FILES = [ROOT / "README.md", ROOT / "docs/architecture.md", ROOT / "docs/guides/rag-walkthrough.md"]
+
+
+def _collect(root: Path, include_meta: bool) -> list[Path]:
+    """Gather ingestible files, skipping unsupported types quietly."""
+    paths = [
+        p
+        for p in sorted(root.rglob("*"))
+        if p.is_file() and p.suffix.lower() in SUPPORTED_EXTENSIONS
+    ]
+    if include_meta:
+        paths += [p for p in META_FILES if p.is_file()]
+    return paths
+
+
+def _relative_name(path: Path, root: Path) -> str:
+    """Name a file by its path under the ingest root (or the repo, for META_FILES).
+
+    The name keys stale-revision cleanup, so two files that share a basename in
+    different folders must not collide, as they would with ``path.name``.
+    """
+    path = path.resolve()
+    for base in (root.resolve(), ROOT):
+        if path.is_relative_to(base):
+            return path.relative_to(base).as_posix()
+    return path.name
+
+
+async def _ingest_one(
+    path: Path,
+    root: Path,
+    semaphore: asyncio.Semaphore,
+    tenant: str | None = None,
+    groups: list[str] | None = None,
+) -> tuple[Path, str | None]:
+    """Ingest one file. Returns (path, error) so one failure cannot stop the run."""
+    name = _relative_name(path, root)
+    async with semaphore:
+        try:
+            content = await asyncio.to_thread(path.read_bytes)
+            result = await enqueue_document(name, content, tenant=tenant, acl_groups=groups)
+            print(f"  ok    {name}  ({result['chunks']} chunks)")
+            return path, None
+        except Exception as e:
+            message = f"{type(e).__name__}: {e}"
+            print(f"  FAIL  {name}  {message}")
+            return path, message
+
+
+async def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--path", type=Path, default=DEFAULT_DOCS, help="Directory to ingest"
+    )
+    parser.add_argument(
+        "--concurrency", type=int, default=4, help="Files embedded in parallel"
+    )
+    meta = parser.add_mutually_exclusive_group()
+    meta.add_argument(
+        "--with-meta",
+        action="store_true",
+        help="Also ingest README.md, docs/architecture.md and docs/guides/rag-walkthrough.md",
+    )
+    meta.add_argument(
+        "--no-meta",
+        action="store_true",
+        help="Skip the top-level docs (the default; kept for existing scripts)",
+    )
+    parser.add_argument("--tenant", default=None, help="Tenant (default: DEFAULT_TENANT)")
+    parser.add_argument(
+        "--groups",
+        default=None,
+        help="Comma-separated groups allowed to read the documents (default: public)",
+    )
+    args = parser.parse_args()
+    groups = [g for g in args.groups.split(",") if g.strip()] if args.groups else None
+
+    if not args.path.exists():
+        print(f"No such directory: {args.path}")
+        return 1
+
+    paths = _collect(args.path, include_meta=args.with_meta)
+    if not paths:
+        print(f"Nothing to ingest under {args.path}")
+        print(f"Supported types: {', '.join(sorted(SUPPORTED_EXTENSIONS))}")
+        return 1
+
+    print(f"Ingesting {len(paths)} file(s) from {args.path} ...\n")
+    semaphore = asyncio.Semaphore(args.concurrency)
+    outcomes = await asyncio.gather(
+        *(_ingest_one(p, args.path, semaphore, args.tenant, groups) for p in paths)
+    )
+
+    failures = [(p, err) for p, err in outcomes if err]
+    print(f"\n{len(outcomes) - len(failures)}/{len(outcomes)} files ingested.")
+    if failures:
+        print(f"{len(failures)} failed:")
+        for path, err in failures:
+            print(f"  {path.name}: {err}")
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(asyncio.run(main()))

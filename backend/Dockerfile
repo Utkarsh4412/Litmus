@@ -1,0 +1,82 @@
+# syntax=docker/dockerfile:1
+#
+# Two stages share one base so the runtime image carries no build tooling.
+# `--target dev` gives the hot-reload image Compose uses; the default `runtime`
+# target is the one to deploy: no dev dependencies, no --reload, non-root.
+
+FROM python:3.11-slim AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DEFAULT_TIMEOUT=180 \
+    PIP_RETRIES=10
+
+WORKDIR /app
+
+# tesseract (French and English language data) and poppler's pdftoppm let
+# ingestion OCR scanned PDFs. Without them OCR is skipped with a warning.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        poppler-utils \
+        tesseract-ocr \
+        tesseract-ocr-eng \
+        tesseract-ocr-fra \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install CPU-only torch first so sentence-transformers does not pull ~2GB of
+# CUDA wheels through its default torch dependency. Override the index where
+# download.pytorch.org is unreachable, e.g. a mirror, or PyPI at the cost of a
+# much larger image:
+#   docker build --build-arg TORCH_INDEX_URL=https://pypi.org/simple backend
+#
+# src/litmus/ is only an empty placeholder at this point: installing the project's
+# dependencies before copying the source keeps that (slow) layer cached across
+# code changes. Each stage below deals with the placeholder explicitly.
+ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
+COPY pyproject.toml ./
+RUN mkdir -p src/litmus && touch src/litmus/__init__.py \
+    && pip install --upgrade pip \
+    && pip install --index-url "$TORCH_INDEX_URL" torch
+
+
+# --- development image: dev dependencies, hot reload, bind-mounted source ----
+FROM base AS dev
+
+# Editable: site-packages only points at /app/src, so the real source copied
+# (and bind-mounted) below is what gets imported.
+RUN pip install -e ".[dev,tracing,openai]"
+
+COPY src ./src
+COPY tests ./tests
+
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)" || exit 1
+
+CMD ["uvicorn", "litmus.main:app", "--app-dir", "src", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+
+# --- production image: runtime dependencies only, non-root, no reload --------
+FROM base AS runtime
+
+# A non-editable install copies the placeholder litmus/ into site-packages, where
+# an empty package would shadow the real source for anything not started from
+# /app. Keep the dependencies, drop the placeholder, then copy the real code.
+RUN pip install ".[tracing,openai]" \
+    && pip uninstall -y litmus-rag
+
+COPY src ./src
+
+# Run as an unprivileged user, and give it the log directory it writes to.
+RUN useradd --create-home --uid 10001 litmus \
+    && mkdir -p /app/logs \
+    && chown -R litmus:litmus /app
+USER litmus
+
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)" || exit 1
+
+CMD ["uvicorn", "litmus.main:app", "--app-dir", "src", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,0 +1,137 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { fetchHealth, getApiKey, onUnauthorized, setApiKey } from "../../lib/api/client";
+import { useI18n } from "../../lib/i18n";
+import GateSurface from "./GateSurface";
+
+/**
+ * Shows an API key field when the backend requires one.
+ *
+ * The backend reports `auth_required` from GET /health, so a local instance
+ * with auth disabled never sees this. The field also appears when /health
+ * cannot be reached (so there is no way to tell), and whenever a request comes
+ * back 401, e.g. because a saved key was revoked. When auth is on and no key
+ * is stored, the banner explains how to mint one.
+ */
+export default function ApiKeyGate() {
+  const queryClient = useQueryClient();
+  const { t, rich } = useI18n();
+  const [authRequired, setAuthRequired] = useState<boolean | null>(null);
+  const [healthFailed, setHealthFailed] = useState(false);
+  const [rejected, setRejected] = useState(false);
+  const [key, setKeyState] = useState(getApiKey() ?? "");
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchHealth().then((h) => {
+      if (cancelled) return;
+      if (h) setAuthRequired(h.auth_required);
+      else setHealthFailed(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => onUnauthorized(() => setRejected(true)), []);
+
+  useEffect(() => {
+    if (!saved) return;
+    const timer = setTimeout(() => setSaved(false), 2000);
+    return () => clearTimeout(timer);
+  }, [saved]);
+
+  if (!authRequired && !healthFailed && !rejected) return null;
+
+  const stored = getApiKey();
+
+  function save(e: React.FormEvent) {
+    e.preventDefault();
+    setApiKey(key);
+    setSaved(true);
+    setRejected(false);
+    // Everything cached so far was fetched with the old key (or none), so a
+    // 401, or another key's view of the data, would otherwise linger.
+    queryClient.invalidateQueries();
+  }
+
+  function clear() {
+    setApiKey(null);
+    setKeyState("");
+    setSaved(false);
+    queryClient.invalidateQueries();
+  }
+
+  const unreachable = healthFailed && !authRequired && !rejected;
+  const title = t(
+    rejected
+      ? stored
+        ? "apikey.rejected"
+        : "apikey.required"
+      : unreachable
+        ? "apikey.unreachable"
+        : stored
+          ? "apikey.saved"
+          : "apikey.required",
+  );
+
+  return (
+    <GateSurface modal={!!((authRequired || rejected) && (!stored || rejected))} title={title}>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <div className="text-sm font-medium text-zinc-200">{title}</div>
+          <p className="text-xs text-zinc-500 mt-1 leading-relaxed max-w-prose">
+            {unreachable
+              ? rich("apikey.unreachableHelp", {
+                  endpoint: <code className="font-mono">GET /health</code>,
+                })
+              : stored && !rejected
+                ? rich("apikey.storedHelp", {
+                    header: <code className="font-mono">Authorization: Bearer …</code>,
+                  })
+                : rich("apikey.createHelp", {
+                    command: (
+                      <code className="font-mono">
+                        python tools/setup_auth.py --create-key "my-laptop"
+                      </code>
+                    ),
+                  })}
+          </p>
+        </div>
+        {saved && (
+          <span className="text-xs text-emerald-400 font-mono shrink-0">{t("apikey.savedBadge")}</span>
+        )}
+      </div>
+
+      <form onSubmit={save} className="mt-3 flex gap-2 flex-wrap">
+        <input
+          type="password"
+          value={key}
+          onChange={(e) => setKeyState(e.target.value)}
+          placeholder="sk_…"
+          autoComplete="off"
+          spellCheck={false}
+          aria-label={t("apikey.label")}
+          className="flex-1 min-w-[16rem] rounded border border-bg-border bg-bg-base px-3 py-1.5 text-sm font-mono text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-accent"
+        />
+        <button
+          type="submit"
+          disabled={!key.trim()}
+          className="rounded border border-bg-border px-3 py-1.5 text-sm text-zinc-200 hover:border-accent disabled:opacity-40 disabled:hover:border-bg-border transition-colors"
+        >
+          {t("apikey.saveKey")}
+        </button>
+        {stored && (
+          <button
+            type="button"
+            onClick={clear}
+            className="rounded border border-transparent px-3 py-1.5 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            {t("common.clear")}
+          </button>
+        )}
+      </form>
+    </GateSurface>
+  );
+}

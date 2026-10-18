@@ -1,0 +1,770 @@
+{
+  "uid": "litmus-overview",
+  "title": "Litmus overview",
+  "tags": [
+    "litmus"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "editable": false,
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Requests / s by route",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "litmus-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "sum by (route, status) (rate(litmus_http_requests_total[5m]))",
+          "legendFormat": "{{route}} {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Request latency p95 by route",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "litmus-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, route) (rate(litmus_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{route}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Strategy latency p50 / p95",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "litmus-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le, strategy) (rate(litmus_strategy_duration_seconds_bucket[15m])))",
+          "legendFormat": "p50 {{strategy}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, strategy) (rate(litmus_strategy_duration_seconds_bucket[15m])))",
+          "legendFormat": "p95 {{strategy}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Tokens / min by model and strategy",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "litmus-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "sum by (model, strategy, direction) (rate(litmus_llm_tokens_total[5m])) * 60",
+          "legendFormat": "{{model}} {{strategy}} {{direction}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Refusals / hour by strategy and reason",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "litmus-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "sum by (strategy, reason) (increase(litmus_refusals_total[1h]))",
+          "legendFormat": "{{strategy}} {{reason}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Circuit breakers (0 closed, 1 half-open, 2 open)",
+      "description": "Anthropic and Qdrant breakers. 2 means calls are being rejected.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "litmus-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "litmus_circuit_breaker_state",
+          "legendFormat": "{{service}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Telemetry export: delivered vs dropped",
+      "description": "Drops never affect requests; they mean Langfuse is down or the queue is full.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "litmus-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "sum by (exporter) (rate(litmus_telemetry_exported_total[5m]))",
+          "legendFormat": "exported {{exporter}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "sum by (exporter, reason) (rate(litmus_telemetry_dropped_total[5m]))",
+          "legendFormat": "dropped {{exporter}} {{reason}}"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Backend process memory",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "litmus-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "process_resident_memory_bytes{job=\"litmus-backend\"}",
+          "legendFormat": "RSS"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "Cost, pipeline stages and context",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Estimated cost / hour by model and strategy",
+      "description": "USD per hour at the 5m rate of litmus_llm_cost_usd_total. List prices from litmus/observability/data/model_pricing.toml; calls to unpriced models are not included.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "litmus-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 33,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "sum by (model, strategy) (rate(litmus_llm_cost_usd_total[5m])) * 3600",
+          "legendFormat": "{{model}} {{strategy}}"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "bargauge",
+      "title": "Estimated cost in time range by model and strategy",
+      "description": "Total estimated USD over the selected time range (increase, so backend restarts do not reset it).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "litmus-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 33,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 4
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "sort_desc(sum by (model, strategy) (increase(litmus_llm_cost_usd_total[$__range])))",
+          "legendFormat": "{{model}} {{strategy}}",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Cost per request p50 / p95 by strategy",
+      "description": "Estimated USD of one strategy run (priced runs only), from the litmus_request_cost_usd histogram, plus the mean.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "litmus-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 41,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 5
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le, strategy) (rate(litmus_request_cost_usd_bucket[15m])))",
+          "legendFormat": "p50 {{strategy}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, strategy) (rate(litmus_request_cost_usd_bucket[15m])))",
+          "legendFormat": "p95 {{strategy}}"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "sum by (strategy) (rate(litmus_request_cost_usd_sum[15m])) / sum by (strategy) (rate(litmus_request_cost_usd_count[15m]))",
+          "legendFormat": "mean {{strategy}}"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Unpriced model calls / hour by model and strategy",
+      "description": "Calls to a model with no row in the price table: their cost is null and missing from the cost panels. Add the model to litmus/observability/data/model_pricing.toml.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "litmus-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 41,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "sum by (model, strategy) (increase(litmus_llm_unpriced_calls_total[1h]))",
+          "legendFormat": "{{model}} {{strategy}}"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Stage latency p50 by strategy and stage",
+      "description": "Exclusive wall time of each pipeline stage (retrieval, rerank, generation, citation_validation).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "litmus-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 49,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le, strategy, stage) (rate(litmus_stage_duration_seconds_bucket[15m])))",
+          "legendFormat": "{{strategy}} {{stage}}"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Stage latency p95 by strategy and stage",
+      "description": "Exclusive wall time of each pipeline stage (retrieval, rerank, generation, citation_validation).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "litmus-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 49,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, strategy, stage) (rate(litmus_stage_duration_seconds_bucket[15m])))",
+          "legendFormat": "{{strategy}} {{stage}}"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "Context chunks per answer p50 / p95 / mean by strategy",
+      "description": "Chunks in the context each answer was generated from, from the litmus_context_chunks histogram.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "litmus-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 57,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le, strategy) (rate(litmus_context_chunks_bucket[15m])))",
+          "legendFormat": "p50 {{strategy}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, strategy) (rate(litmus_context_chunks_bucket[15m])))",
+          "legendFormat": "p95 {{strategy}}"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "sum by (strategy) (rate(litmus_context_chunks_sum[15m])) / sum by (strategy) (rate(litmus_context_chunks_count[15m]))",
+          "legendFormat": "mean {{strategy}}"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "type": "bargauge",
+      "title": "Context chunks distribution in time range",
+      "description": "Answers per context-size bucket (upper bound, le) over the selected time range, all strategies.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "litmus-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 57,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "vertical",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "sum by (le) (increase(litmus_context_chunks_bucket[$__range]))",
+          "legendFormat": "{{le}}",
+          "instant": true,
+          "format": "heatmap"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "type": "stat",
+      "title": "Circuit breaker consecutive failures",
+      "description": "Consecutive failures per service; a successful call resets the count.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "litmus-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 65,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "litmus-prometheus"
+          },
+          "expr": "litmus_circuit_breaker_failures",
+          "legendFormat": "{{service}}"
+        }
+      ]
+    }
+  ]
+}

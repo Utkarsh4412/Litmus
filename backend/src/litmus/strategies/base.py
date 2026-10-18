@@ -1,0 +1,155 @@
+"""Strategy base classes and interfaces for RAG pipelines.
+
+This module defines the abstract interface that all RAG strategies (classic, graph, agentic)
+must implement. It also provides the unified StrategyResult dataclass that ensures
+consistent output formatting across different strategies for comparison and evaluation.
+
+Key concepts:
+    - Strategy: Abstract base class defining the contract for RAG implementations
+    - StrategyResult: Normalized output with answer, sources, confidence, and telemetry
+"""
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+
+from litmus.governance.access import AccessScope
+from litmus.schemas import Claim, RequestMetrics, Source
+
+
+@dataclass
+class StrategyResult:
+    """Uniform output across classic/graph/agentic so /compare can render side-by-side.
+
+    This dataclass standardizes the response format from all RAG strategies, enabling
+    side-by-side comparison in the UI. It includes both the answer/sources and rich
+    telemetry data for analysis.
+
+    Attributes:
+        answer: The generated answer text from the RAG pipeline.
+        sources: List of Source objects citing specific chunks that support the answer.
+        refusal: Whether the strategy refused to answer (no relevant context found).
+            Defaults to False.
+        confidence: Evidence score (0.0-1.0) from :func:`litmus.generation.grounding.evidence_score`;
+            not a calibrated probability. Defaults to 0.0.
+        latency_ms: Total execution time in milliseconds. Defaults to 0.
+        input_tokens: Number of tokens consumed for input. Defaults to 0.
+        output_tokens: Number of tokens generated. Defaults to 0.
+        iterations: Number of retrieval/reasoning iterations (relevant for agentic RAG).
+            Defaults to 1.
+        trace: List of dicts containing strategy-specific reasoning trace (tool calls,
+            graph walks, retrieval steps) for UI inspection. Defaults to empty list.
+        extra: Dict for strategy-specific metadata and extra information. Defaults to
+            empty dict. Every strategy that retrieves sets the same evaluation keys:
+            ``retrieved_ids`` (ranked chunk ids of the context it used),
+            ``retrieved_docs`` (the filename behind each of those ids) and
+            ``context_text`` (the context exactly as the generator saw it).
+        trace_id: Id of the request trace, retrievable from ``/traces/{id}``.
+        grounded: Whether every claim is backed by a valid citation (see
+            :func:`litmus.generation.grounding.validate_citations`).
+        status: ``answered``, ``partial`` or ``insufficient_context``; None
+            when no answer was generated.
+        claims: Claims with their validated citations.
+        invalid_citations: Handles the model cited that were not in its context.
+        citation_count: Distinct valid sources cited.
+        unsupported_notes: What the model said the context does not cover.
+        candidate_count: Candidate chunks retrieved before the final cut
+            (fused candidates; graph adds its own; agentic sums its searches).
+        context_count: Chunks in the context the answer was generated from.
+        metrics: Cost and per-stage latency, filled in by the orchestrator
+            (:mod:`litmus.generation.generate`) once the run finishes.
+
+    Example:
+        >>> result = StrategyResult(
+        ...     answer="The Earth orbits the Sun.",
+        ...     sources=[Source(chunk_id="doc1_chunk5", quote="Earth revolves around the Sun...")],
+        ...     confidence=0.95,
+        ...     input_tokens=150,
+        ...     output_tokens=25,
+        ... )
+    """
+
+    answer: str
+    sources: list[Source]
+    refusal: bool = False
+    confidence: float = 0.0
+    latency_ms: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    iterations: int = 1
+    trace: list[dict] = field(default_factory=list)
+    extra: dict = field(default_factory=dict)
+    trace_id: str | None = None
+    grounded: bool = False
+    status: str | None = None
+    claims: list[Claim] = field(default_factory=list)
+    invalid_citations: list[str] = field(default_factory=list)
+    citation_count: int = 0
+    unsupported_notes: str | None = None
+    candidate_count: int = 0
+    context_count: int = 0
+    metrics: RequestMetrics | None = None
+
+
+class Strategy(ABC):
+    """Abstract base class for RAG strategies.
+
+    A RAG strategy turns a user question into a grounded, sourced answer by:
+    1. Retrieving relevant chunks from indexed documents
+    2. Optionally processing/ranking/reasoning over those chunks
+    3. Generating an answer using an LLM, grounded in the retrieved context
+
+    Subclasses must implement the `run` method. The orchestrator in `generate.py`
+    handles timing, provider-error wrapping, and telemetry collection uniformly
+    across all strategies.
+
+    Attributes:
+        name: Human-readable name of the strategy (e.g., "classic", "graph", "agentic").
+            Override in subclasses.
+
+    Example:
+        >>> class CustomRAG(Strategy):
+        ...     name = "custom"
+        ...     async def run(self, question: str, *, top_k: int, model: str,
+        ...                   prompt_version: str) -> StrategyResult:
+        ...         # Implement retrieval and generation logic
+        ...         return StrategyResult(...)
+    """
+
+    name: str = "base"
+    # Generation provider. Only the classic strategy honours it; graph and
+    # agentic need Anthropic features and always run there.
+    provider: str = "anthropic"
+
+    @abstractmethod
+    async def run(
+        self,
+        question: str,
+        *,
+        top_k: int,
+        model: str,
+        prompt_version: str,
+        access: AccessScope | None = None,
+    ) -> StrategyResult:
+        """Execute the RAG strategy to answer a question.
+
+        Args:
+            question: The user's question to answer.
+            top_k: Maximum number of chunks to include in context for answer generation.
+                Strategies may retrieve more chunks initially then rerank to this value.
+            model: Name/ID of the language model to use for generation
+                (e.g., "claude-sonnet-5", "gpt-4").
+            prompt_version: Version/name of the prompt template to use for system/user
+                messages (e.g., "default", "v2"). Versioning allows A/B testing.
+            access: The caller's read scope. Every retrieval the strategy makes
+                must be restricted to it. ``None`` is unrestricted and is for
+                internal scripts only; API routes always pass a scope.
+
+        Returns:
+            StrategyResult containing the answer, sources, confidence, and telemetry.
+
+        Raises:
+            Exception subclasses may be raised by underlying provider/retrieval APIs.
+                These are caught and wrapped uniformly by generate.py.
+        """
+        ...

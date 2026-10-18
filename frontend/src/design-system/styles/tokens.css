@@ -1,0 +1,457 @@
+/* Theme literals are centralized here; aliases preserve existing markup. */
+:root {
+  --dark-plane-base: #0f1112;
+  --dark-plane-band-a: #1c2622;
+  --dark-plane-band-b: #1b212b;
+  --dark-sample-band-a-noise: #243029;
+  --dark-sample-band-b-noise: #232b38;
+  --dark-ink: #eceae4;
+  --dark-ink-2: #cfcdc5;
+  --dark-ink-3: #b9b7af;
+  --dark-status-ok: #4fb286;
+  --dark-status-warn: #d9a441;
+  --dark-status-bad: #e4725f;
+  --dark-status-idle: #a3a39d;
+  --dark-plot-well: #16171b;
+  --dark-series-classic: #4694f2;
+  --dark-series-graph: #da5b2a;
+  --dark-series-agentic: #179469;
+  --dark-stage-citation: #c98500;
+  --dark-stage-other: #d55181;
+  --dark-series-unknown: #a3a39d;
+  --dark-noise-opacity: .03;
+  --dark-glass-alpha-l1: 0.06;
+  --dark-surface-solid-l1: #313c36;
+  --dark-glass-alpha-l2: 0.09;
+  --dark-surface-solid-l2: #38433c;
+  --dark-glass-alpha-l3: 0.12;
+  --dark-surface-solid-l3: #3e4943;
+  --light-plane-base: #f4f2ec;
+  --light-plane-band-a: #e3eae3;
+  --light-plane-band-b: #e1e6ee;
+  --light-sample-band-a-noise: #d9e1d9;
+  --light-sample-band-b-noise: #d7dde7;
+  --light-ink: #1b1a17;
+  --light-ink-2: #4a4944;
+  --light-ink-3: #65645d;
+  --light-status-ok: #1d7a55;
+  --light-status-warn: #8a5a00;
+  --light-status-bad: #b3372a;
+  --light-status-idle: #6b6a63;
+  --light-plot-well: #ffffff;
+  --light-series-classic: #1e68bc;
+  --light-series-graph: #cf5525;
+  --light-series-agentic: #2a996d;
+  --light-stage-citation: #b07824;
+  --light-stage-other: #bb406d;
+  --light-series-unknown: #6b6a63;
+  --light-noise-opacity: .04;
+  --light-glass-alpha-l1: 0.5;
+  --light-surface-solid-l1: #ebeef3;
+  --light-glass-alpha-l2: 0.62;
+  --light-surface-solid-l2: #f0f2f6;
+  --light-glass-alpha-l3: 0.74;
+  --light-surface-solid-l3: #f5f6f9;
+
+  --glass-rgb: 255 255 255;
+  --glass-blur-l1: 12px;
+  --glass-blur-l2: 16px;
+  --glass-blur-l3: 20px;
+  --glass-saturation: 1.05;
+  --glass-edge-l1: rgb(255 255 255 / .07);
+  --glass-edge-l2: rgb(255 255 255 / .09);
+  --glass-edge-l3: rgb(255 255 255 / .11);
+  --glass-shadow-l1: inset 0 1px 0 rgb(255 255 255 / .10), 0 1px 2px rgb(0 0 0 / .30);
+  --glass-shadow-l2: inset 0 1px 0 rgb(255 255 255 / .12), 0 4px 14px rgb(0 0 0 / .32);
+  --glass-shadow-l3: inset 0 1px 0 rgb(255 255 255 / .14), 0 12px 32px rgb(0 0 0 / .40);
+  --accent: var(--ink);
+  --accent-hover: var(--ink-2);
+  --accent-soft: color-mix(in srgb, var(--ink) 12%, var(--plane-base));
+  --scrim: rgb(0 0 0 / .48);
+  --surface-paper: var(--plot-well);
+  --surface-elevated: var(--surface-solid-l1);
+  --edge: color-mix(in srgb, var(--ink) 24%, var(--plane-base));
+  --chart-grid: var(--edge);
+  --chart-axis: var(--ink-3);
+  --font-ui: "Instrument Sans Variable", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-document: "Newsreader Variable", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-data: "JetBrains Mono Variable", "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  --radius-control: 6px;
+  --radius-panel: 10px;
+  --radius-overlay: 14px;
+  --space-unit: 4px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --type-xs: 12px;
+  --type-sm: 14px;
+  --type-base: 16px;
+  --type-lg: 20px;
+  --type-xl: 28px;
+  --type-2xl: 40px;
+  --motion-duration: 160ms;
+  --motion-distance: 4px;
+  --motion-easing: ease-out;
+  --grid-opacity: .04;
+
+  --plane-base: var(--dark-plane-base);
+  --plane-band-a: var(--dark-plane-band-a);
+  --plane-band-b: var(--dark-plane-band-b);
+  --sample-band-a-noise: var(--dark-sample-band-a-noise);
+  --sample-band-b-noise: var(--dark-sample-band-b-noise);
+  --ink: var(--dark-ink);
+  --ink-2: var(--dark-ink-2);
+  --ink-3: var(--dark-ink-3);
+  --status-ok: var(--dark-status-ok);
+  --status-warn: var(--dark-status-warn);
+  --status-bad: var(--dark-status-bad);
+  --status-idle: var(--dark-status-idle);
+  --plot-well: var(--dark-plot-well);
+  --series-classic: var(--dark-series-classic);
+  --series-graph: var(--dark-series-graph);
+  --series-agentic: var(--dark-series-agentic);
+  --stage-citation: var(--dark-stage-citation);
+  --stage-other: var(--dark-stage-other);
+  --series-unknown: var(--dark-series-unknown);
+  --noise-opacity: var(--dark-noise-opacity);
+  --glass-alpha-l1: var(--dark-glass-alpha-l1);
+  --surface-solid-l1: var(--dark-surface-solid-l1);
+  --glass-alpha-l2: var(--dark-glass-alpha-l2);
+  --surface-solid-l2: var(--dark-surface-solid-l2);
+  --glass-alpha-l3: var(--dark-glass-alpha-l3);
+  --surface-solid-l3: var(--dark-surface-solid-l3);
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --plane-base: var(--light-plane-base);
+  --plane-band-a: var(--light-plane-band-a);
+  --plane-band-b: var(--light-plane-band-b);
+  --sample-band-a-noise: var(--light-sample-band-a-noise);
+  --sample-band-b-noise: var(--light-sample-band-b-noise);
+  --ink: var(--light-ink);
+  --ink-2: var(--light-ink-2);
+  --ink-3: var(--light-ink-3);
+  --status-ok: var(--light-status-ok);
+  --status-warn: var(--light-status-warn);
+  --status-bad: var(--light-status-bad);
+  --status-idle: var(--light-status-idle);
+  --plot-well: var(--light-plot-well);
+  --series-classic: var(--light-series-classic);
+  --series-graph: var(--light-series-graph);
+  --series-agentic: var(--light-series-agentic);
+  --stage-citation: var(--light-stage-citation);
+  --stage-other: var(--light-stage-other);
+  --series-unknown: var(--light-series-unknown);
+  --noise-opacity: var(--light-noise-opacity);
+  --glass-alpha-l1: var(--light-glass-alpha-l1);
+  --surface-solid-l1: var(--light-surface-solid-l1);
+  --glass-alpha-l2: var(--light-glass-alpha-l2);
+  --surface-solid-l2: var(--light-surface-solid-l2);
+  --glass-alpha-l3: var(--light-glass-alpha-l3);
+  --surface-solid-l3: var(--light-surface-solid-l3);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+  --plane-base: var(--light-plane-base);
+  --plane-band-a: var(--light-plane-band-a);
+  --plane-band-b: var(--light-plane-band-b);
+  --sample-band-a-noise: var(--light-sample-band-a-noise);
+  --sample-band-b-noise: var(--light-sample-band-b-noise);
+  --ink: var(--light-ink);
+  --ink-2: var(--light-ink-2);
+  --ink-3: var(--light-ink-3);
+  --status-ok: var(--light-status-ok);
+  --status-warn: var(--light-status-warn);
+  --status-bad: var(--light-status-bad);
+  --status-idle: var(--light-status-idle);
+  --plot-well: var(--light-plot-well);
+  --series-classic: var(--light-series-classic);
+  --series-graph: var(--light-series-graph);
+  --series-agentic: var(--light-series-agentic);
+  --stage-citation: var(--light-stage-citation);
+  --stage-other: var(--light-stage-other);
+  --series-unknown: var(--light-series-unknown);
+  --noise-opacity: var(--light-noise-opacity);
+  --glass-alpha-l1: var(--light-glass-alpha-l1);
+  --surface-solid-l1: var(--light-surface-solid-l1);
+  --glass-alpha-l2: var(--light-glass-alpha-l2);
+  --surface-solid-l2: var(--light-surface-solid-l2);
+  --glass-alpha-l3: var(--light-glass-alpha-l3);
+  --surface-solid-l3: var(--light-surface-solid-l3);
+  color-scheme: light;
+  }
+}
+
+/* CSS-only initial theme avoids a flash and needs no inline script/CSP exception. */
+@theme inline {
+  --animate-shimmer: shimmer var(--motion-duration) var(--motion-easing);
+  --animate-fade-in: fade-in var(--motion-duration) var(--motion-easing);
+  --color-bg: var(--plane-base);
+  --color-bg-surface: var(--surface-paper);
+  --color-bg-elevated: var(--surface-elevated);
+  --color-bg-border: var(--edge);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ok: var(--status-ok);
+  --color-warn: var(--status-warn);
+  --color-bad: var(--status-bad);
+  --color-idle: var(--status-idle);
+  --color-white: var(--ink);
+  --color-black: var(--plane-base);
+  --font-sans: var(--font-ui);
+  --font-display: var(--font-document);
+  --font-mono: var(--font-data);
+  --radius-lg: var(--radius-control);
+  --radius-xl: var(--radius-panel);
+  --radius-2xl: var(--radius-overlay);
+  --text-xs: var(--type-xs);
+  --text-sm: var(--type-sm);
+  --text-base: var(--type-base);
+  --text-lg: var(--type-lg);
+  --text-xl: var(--type-xl);
+  --text-2xl: var(--type-2xl);
+  --text-3xl: var(--type-2xl);
+  --text-4xl: var(--type-2xl);
+  --default-transition-duration: var(--motion-duration);
+  --default-transition-timing-function: var(--motion-easing);
+
+  --color-zinc-50: var(--ink);
+  --color-zinc-100: var(--ink);
+  --color-zinc-200: var(--ink);
+  --color-zinc-300: var(--ink-2);
+  --color-zinc-400: var(--ink-2);
+  --color-zinc-500: var(--ink-3);
+  --color-zinc-600: var(--ink-3);
+  --color-zinc-700: var(--surface-solid-l1);
+  --color-zinc-800: var(--surface-paper);
+  --color-zinc-900: var(--plane-base);
+  --color-zinc-950: var(--plane-base);
+  --color-sky-50: var(--ink);
+  --color-sky-100: var(--ink);
+  --color-sky-200: var(--ink-2);
+  --color-sky-300: var(--ink-2);
+  --color-sky-400: var(--ink);
+  --color-sky-500: var(--ink);
+  --color-sky-600: var(--ink);
+  --color-sky-700: var(--ink);
+  --color-sky-800: var(--ink);
+  --color-sky-900: var(--ink);
+  --color-sky-950: var(--ink);
+  --color-blue-50: var(--ink);
+  --color-blue-100: var(--ink);
+  --color-blue-200: var(--ink-2);
+  --color-blue-300: var(--ink-2);
+  --color-blue-400: var(--ink);
+  --color-blue-500: var(--ink);
+  --color-blue-600: var(--ink);
+  --color-blue-700: var(--ink);
+  --color-blue-800: var(--ink);
+  --color-blue-900: var(--ink);
+  --color-blue-950: var(--ink);
+  --color-violet-50: var(--ink);
+  --color-violet-100: var(--ink);
+  --color-violet-200: var(--ink-2);
+  --color-violet-300: var(--ink-2);
+  --color-violet-400: var(--ink);
+  --color-violet-500: var(--ink);
+  --color-violet-600: var(--ink);
+  --color-violet-700: var(--ink);
+  --color-violet-800: var(--ink);
+  --color-violet-900: var(--ink);
+  --color-violet-950: var(--ink);
+  --color-purple-50: var(--ink);
+  --color-purple-100: var(--ink);
+  --color-purple-200: var(--ink-2);
+  --color-purple-300: var(--ink-2);
+  --color-purple-400: var(--ink);
+  --color-purple-500: var(--ink);
+  --color-purple-600: var(--ink);
+  --color-purple-700: var(--ink);
+  --color-purple-800: var(--ink);
+  --color-purple-900: var(--ink);
+  --color-purple-950: var(--ink);
+  --color-emerald-50: var(--ink);
+  --color-emerald-100: var(--ink);
+  --color-emerald-200: var(--ink-2);
+  --color-emerald-300: var(--ink-2);
+  --color-emerald-400: var(--ink);
+  --color-emerald-500: var(--ink);
+  --color-emerald-600: var(--ink);
+  --color-emerald-700: var(--ink);
+  --color-emerald-800: var(--ink);
+  --color-emerald-900: var(--ink);
+  --color-emerald-950: var(--ink);
+  --color-green-50: var(--ink);
+  --color-green-100: var(--ink);
+  --color-green-200: var(--ink-2);
+  --color-green-300: var(--ink-2);
+  --color-green-400: var(--ink);
+  --color-green-500: var(--ink);
+  --color-green-600: var(--ink);
+  --color-green-700: var(--ink);
+  --color-green-800: var(--ink);
+  --color-green-900: var(--ink);
+  --color-green-950: var(--ink);
+  --color-amber-50: var(--ink);
+  --color-amber-100: var(--ink);
+  --color-amber-200: var(--ink-2);
+  --color-amber-300: var(--ink-2);
+  --color-amber-400: var(--ink);
+  --color-amber-500: var(--ink);
+  --color-amber-600: var(--ink);
+  --color-amber-700: var(--ink);
+  --color-amber-800: var(--ink);
+  --color-amber-900: var(--ink);
+  --color-amber-950: var(--ink);
+  --color-yellow-50: var(--ink);
+  --color-yellow-100: var(--ink);
+  --color-yellow-200: var(--ink-2);
+  --color-yellow-300: var(--ink-2);
+  --color-yellow-400: var(--ink);
+  --color-yellow-500: var(--ink);
+  --color-yellow-600: var(--ink);
+  --color-yellow-700: var(--ink);
+  --color-yellow-800: var(--ink);
+  --color-yellow-900: var(--ink);
+  --color-yellow-950: var(--ink);
+  --color-orange-50: var(--ink);
+  --color-orange-100: var(--ink);
+  --color-orange-200: var(--ink-2);
+  --color-orange-300: var(--ink-2);
+  --color-orange-400: var(--ink);
+  --color-orange-500: var(--ink);
+  --color-orange-600: var(--ink);
+  --color-orange-700: var(--ink);
+  --color-orange-800: var(--ink);
+  --color-orange-900: var(--ink);
+  --color-orange-950: var(--ink);
+  --color-red-50: var(--ink);
+  --color-red-100: var(--ink);
+  --color-red-200: var(--ink-2);
+  --color-red-300: var(--ink-2);
+  --color-red-400: var(--ink);
+  --color-red-500: var(--ink);
+  --color-red-600: var(--ink);
+  --color-red-700: var(--ink);
+  --color-red-800: var(--ink);
+  --color-red-900: var(--ink);
+  --color-red-950: var(--ink);
+  --color-rose-50: var(--ink);
+  --color-rose-100: var(--ink);
+  --color-rose-200: var(--ink-2);
+  --color-rose-300: var(--ink-2);
+  --color-rose-400: var(--ink);
+  --color-rose-500: var(--ink);
+  --color-rose-600: var(--ink);
+  --color-rose-700: var(--ink);
+  --color-rose-800: var(--ink);
+  --color-rose-900: var(--ink);
+  --color-rose-950: var(--ink);
+  --color-teal-50: var(--ink);
+  --color-teal-100: var(--ink);
+  --color-teal-200: var(--ink-2);
+  --color-teal-300: var(--ink-2);
+  --color-teal-400: var(--ink);
+  --color-teal-500: var(--ink);
+  --color-teal-600: var(--ink);
+  --color-teal-700: var(--ink);
+  --color-teal-800: var(--ink);
+  --color-teal-900: var(--ink);
+  --color-teal-950: var(--ink);
+  --color-cyan-50: var(--ink);
+  --color-cyan-100: var(--ink);
+  --color-cyan-200: var(--ink-2);
+  --color-cyan-300: var(--ink-2);
+  --color-cyan-400: var(--ink);
+  --color-cyan-500: var(--ink);
+  --color-cyan-600: var(--ink);
+  --color-cyan-700: var(--ink);
+  --color-cyan-800: var(--ink);
+  --color-cyan-900: var(--ink);
+  --color-cyan-950: var(--ink);
+  --color-indigo-50: var(--ink);
+  --color-indigo-100: var(--ink);
+  --color-indigo-200: var(--ink-2);
+  --color-indigo-300: var(--ink-2);
+  --color-indigo-400: var(--ink);
+  --color-indigo-500: var(--ink);
+  --color-indigo-600: var(--ink);
+  --color-indigo-700: var(--ink);
+  --color-indigo-800: var(--ink);
+  --color-indigo-900: var(--ink);
+  --color-indigo-950: var(--ink);
+  --color-pink-50: var(--ink);
+  --color-pink-100: var(--ink);
+  --color-pink-200: var(--ink-2);
+  --color-pink-300: var(--ink-2);
+  --color-pink-400: var(--ink);
+  --color-pink-500: var(--ink);
+  --color-pink-600: var(--ink);
+  --color-pink-700: var(--ink);
+  --color-pink-800: var(--ink);
+  --color-pink-900: var(--ink);
+  --color-pink-950: var(--ink);
+}
+
+
+/* Hard polygon fields, static 256px noise, and a fading 24px rule grid. */
+@layer base {
+  body { background: var(--plane-base); isolation: isolate; }
+  body::before, body::after {
+    content: ""; position: fixed; inset: 0; z-index: -2; pointer-events: none;
+  }
+  body::before { background: var(--plane-band-a); clip-path: polygon(0 0, 75% 0, 15% 100%, 0 100%); }
+  body::after { background: var(--plane-band-b); clip-path: polygon(100% 0, 100% 100%, 45% 100%); }
+  #root { position: relative; isolation: isolate; }
+  #root::before, #root::after {
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  }
+  #root::before {
+    background-image: url("./noise.svg"); background-size: 256px 256px; opacity: var(--noise-opacity);
+  }
+  #root::after {
+    background: var(--ink); opacity: var(--grid-opacity);
+    mask-image: url("./rule-grid.svg"); mask-size: 100% 100%;
+  }
+}
+
+/* Content stays opaque. Only opt-in non-scrolling chrome may use glass. */
+.glass, .glass-l1 { --glass-solid: var(--surface-solid-l1); --glass-alpha: var(--glass-alpha-l1); --glass-blur: var(--glass-blur-l1); --glass-edge: var(--glass-edge-l1); --glass-shadow: var(--glass-shadow-l1); }
+.glass-l2 { --glass-solid: var(--surface-solid-l2); --glass-alpha: var(--glass-alpha-l2); --glass-blur: var(--glass-blur-l2); --glass-edge: var(--glass-edge-l2); --glass-shadow: var(--glass-shadow-l2); }
+.glass-l3 { --glass-solid: var(--surface-solid-l3); --glass-alpha: var(--glass-alpha-l3); --glass-blur: var(--glass-blur-l3); --glass-edge: var(--glass-edge-l3); --glass-shadow: var(--glass-shadow-l3); }
+:is(.glass, .glass-l1, .glass-l2, .glass-l3) {
+  background: var(--glass-solid); border: 1px solid var(--glass-edge); box-shadow: var(--glass-shadow);
+}
+@supports (backdrop-filter: blur(1px)) {
+  :is(.glass, .glass-l1, .glass-l2, .glass-l3) {
+    background: rgb(var(--glass-rgb) / var(--glass-alpha));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  }
+}
+@supports not (backdrop-filter: blur(1px)) {
+  :is(.glass, .glass-l1, .glass-l2, .glass-l3) { background: var(--glass-solid); backdrop-filter: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :is(.glass, .glass-l1, .glass-l2, .glass-l3) { background: var(--glass-solid); backdrop-filter: none; }
+}
+:root[data-effects="off"] :is(.glass, .glass-l1, .glass-l2, .glass-l3) { background: var(--glass-solid); backdrop-filter: none; }
+@media (prefers-contrast: more) {
+  :is(.glass, .glass-l1, .glass-l2, .glass-l3) { background: var(--glass-solid); backdrop-filter: none; border-color: var(--ink-2); }
+}
+@media (forced-colors: active) {
+  :is(.glass, .glass-l1, .glass-l2, .glass-l3) { background: Canvas; backdrop-filter: none; border: 1px solid CanvasText; box-shadow: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  .skeleton { background: var(--surface-elevated); }
+}

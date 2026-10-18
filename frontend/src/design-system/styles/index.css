@@ -1,0 +1,183 @@
+@import "tailwindcss";
+@import "./fonts.css";
+@import "./tokens.css";
+@config "../../../tailwind.config.js";
+
+/* v3 compatibility: borders default to the theme border colour, not currentColor. */
+@layer base {
+  *, ::before, ::after, ::backdrop { border-color: var(--edge); }
+}
+
+@layer base {
+  html, body, #root { height: 100%; }
+  body {
+    @apply bg-bg text-zinc-200 font-sans antialiased;
+    font-feature-settings: "ss01";
+  }
+  h1, h2, h3 {
+    font-feature-settings: "ss01";
+    letter-spacing: -0.01em;
+  }
+  ::selection { @apply bg-accent/20 text-ink; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { @apply bg-bg-border rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-zinc-600; }
+}
+
+/* A utility (not a component) so .btn-primary and .btn-ghost can @apply it. */
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium
+         transition-[opacity,transform] disabled:opacity-50 disabled:cursor-not-allowed select-none;
+}
+
+@layer components {
+  .card {
+    @apply bg-bg-surface border border-bg-border rounded-xl p-6;
+  }
+  .btn-primary {
+    @apply btn bg-accent text-bg hover:bg-accent-hover ;
+  }
+  .btn-ghost {
+    @apply btn text-zinc-300 hover:bg-bg-elevated hover:text-white border border-bg-border;
+  }
+  .input {
+    @apply w-full bg-bg-elevated border border-bg-border rounded-lg px-4 py-3
+           text-zinc-100 placeholder:text-zinc-500
+           focus:border-accent
+           transition-[opacity,transform];
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium
+           bg-bg-elevated border border-bg-border text-zinc-300;
+  }
+  .nav-link {
+    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
+           text-zinc-400 hover:text-white hover:bg-bg-elevated transition-[opacity,transform];
+  }
+  .nav-link.active {
+    @apply text-white bg-bg-elevated;
+  }
+  .nav-link.active::before {
+    content: "";
+    @apply w-1 h-4 -ml-1 mr-1 bg-accent rounded-full;
+  }
+  .skeleton {
+    background: var(--surface-elevated);
+    background-size: 200% 100%;
+    @apply animate-shimmer rounded-md;
+  }
+  .display {
+    @apply font-display tracking-tight;
+    font-optical-sizing: auto;
+  }
+  .answer-content {
+    @apply text-sm leading-relaxed space-y-2;
+  }
+}
+
+@layer utilities {
+  @keyframes shimmer {
+    from { opacity: .55; }
+    to { opacity: 1; }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(var(--motion-distance)); }
+    to { opacity: 1; transform: none; }
+  }
+  .animate-shimmer {
+    animation: shimmer var(--motion-duration) var(--motion-easing);
+  }
+  .animate-fade-in {
+    animation: fade-in var(--motion-duration) var(--motion-easing);
+  }
+}
+
+@layer base {
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  input, select, textarea { accent-color: var(--ink); }
+  table, .font-mono, svg text { font-variant-numeric: tabular-nums; }
+  svg text { fill: var(--ink-2); font-size: var(--type-xs); }
+  .answer-content { font-family: var(--font-document); }
+}
+/* Preserve the legacy arbitrary class spelling without retaining its old colour. */
+.accent-\[\#e8a93c\] { accent-color: var(--ink); }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.animate-spin { animation: fade-in var(--motion-duration) var(--motion-easing); }
+.transition-colors, .transition-all { transition-property: opacity, transform; transition-duration: var(--motion-duration); transition-timing-function: var(--motion-easing); }
+.text-emerald-300\/70, .text-rose-400\/60 { color: var(--ink-3); }
+.text-\[10px\], .text-\[11px\], .text-\[0\.7em\] { font-size: var(--type-xs); }
+.text-\[22px\] { font-size: var(--type-lg); }
+/* Utility colour aliases keep all existing JSX class names valid in both themes. */
+@media (max-width: 767px) { .nav-link, .btn-primary, .btn-ghost { min-height: 44px; } }
+
+/* Chrome stays outside the document scroll; only these two planes persist. */
+.app-shell { min-height: 100vh; display: flex; padding-left: 224px; }
+.shell-sidebar { position: fixed; inset: 0 auto 0 0; width: 224px; display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-6) var(--space-4); z-index: 20; }
+.wordmark { position: relative; display: inline-block; font: 500 var(--type-xl)/1 var(--font-document); letter-spacing: -.04em; color: var(--ink); padding-bottom: var(--space-2); border-bottom: 1px solid var(--ink-3); }
+.wordmark::after { content: ""; position: absolute; bottom: -1px; right: 0; width: 38%; height: 1px; background: var(--ink); }
+.shell-top { display: flex; align-items: center; justify-content: space-between; min-height: 64px; padding: var(--space-2) var(--space-8); z-index: 10; }
+.shell-location { font-size: var(--type-sm); color: var(--ink-2); }
+.shell-preferences { display: flex; align-items: center; gap: var(--space-3); }
+.preferences { position: relative; }
+.preferences > summary { cursor: pointer; list-style: none; display: grid; place-items: center; min-width: 44px; min-height: 44px; border: 1px solid var(--edge); border-radius: var(--radius-control); color: var(--ink); }
+.preferences > summary::-webkit-details-marker { display: none; }
+.preferences-panel { position: absolute; right: 0; top: calc(100% + var(--space-2)); width: 256px; padding: var(--space-5); border-radius: var(--radius-panel); display: flex; flex-direction: column; gap: var(--space-4); z-index: 30; }
+.auth-dialog { margin: auto; width: min(560px, calc(100% - var(--space-8))); padding: var(--space-6); border-radius: var(--radius-overlay); color: var(--ink); overflow: visible; }
+.auth-dialog::backdrop { background: var(--scrim); }
+:root:has(.auth-dialog[open]) :is(.shell-sidebar, .shell-top, .shell-bottom) { backdrop-filter: none; background: var(--surface-solid-l1); }
+.mobile-brand, .shell-bottom { display: none; }
+.workspace { flex: 1; width: 100%; max-width: 1200px; margin: 0 auto; padding: var(--space-10) var(--space-8); min-width: 0; }
+.backend-status { border-top: 1px solid var(--edge); padding-top: var(--space-4); line-height: 1.7; overflow-wrap: anywhere; }
+.nav-link { min-height: 44px; border-radius: var(--radius-control); }
+.nav-link.active { background: var(--accent-soft); }
+.nav-link.active::before { display: none; }
+.nav-link.active { box-shadow: inset 2px 0 var(--ink); }
+.card { background: var(--surface-paper); box-shadow: none; }
+.input { background: var(--surface-paper); }
+.answer-content { font-size: 18px; line-height: 28px; }
+.plot-well { background: var(--plot-well); color: var(--ink); border: 1px solid var(--edge); border-radius: var(--radius-panel); padding: var(--space-4); min-width: 0; }
+.ask-composer { background: var(--surface-paper); border: 1px solid var(--edge); border-radius: var(--radius-panel); padding: var(--space-4); }
+.question-index { padding-top: var(--space-4); border-top: 1px solid var(--edge); }
+.question-group { display: grid; grid-template-columns: minmax(160px, 1fr) 3fr; gap: var(--space-6); }
+.question-group + .question-group { border-top: 1px solid var(--edge); padding-top: var(--space-6); }
+.strategy-tabs { display: none; }
+.strategy-tabs button[aria-selected="true"] { background: var(--accent-soft); border-color: var(--ink); box-shadow: inset 0 -2px var(--ink); }
+.strategy-columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); }
+.strategy-pane { min-width: 0; }
+.strategy-sheet { height: 100%; border-radius: 0; border-width: 1px 0 0; }
+.graph-index { flex: 1; min-width: 0; }
+.graph-index[open] { padding-bottom: var(--space-3); }
+.eval-page table { font-family: var(--font-data); font-size: var(--type-xs); background: var(--surface-paper); }
+.eval-page th, .eval-page td { padding: var(--space-3) var(--space-2); }
+.eval-page section.card { border-radius: 0; border-width: 1px 0 0; }
+.advisor-page > form { padding: var(--space-6); max-width: 76ch; }
+.advisor-page > section .card { border-radius: 0; border-width: 1px 0 0; }
+.advisor-page textarea { font-family: var(--font-document); font-size: 18px; line-height: 28px; }
+@media (min-width: 768px) and (max-width: 1023px) {
+  .app-shell { padding-left: 72px; }
+  .shell-sidebar { width: 72px; padding: var(--space-6) var(--space-2); }
+  .shell-sidebar .wordmark { font-size: var(--type-base); letter-spacing: -.06em; }
+  .rail-label { display: none; }
+  .shell-sidebar .nav-link { justify-content: center; }
+  .shell-sidebar .nav-link { position: relative; }
+  .shell-sidebar .nav-link:is(:hover, :focus-visible) .rail-label { display: block; position: absolute; left: calc(100% + var(--space-2)); white-space: nowrap; padding: var(--space-2) var(--space-3); border: 1px solid var(--edge); border-radius: var(--radius-control); background: var(--surface-solid-l3); color: var(--ink); box-shadow: var(--glass-shadow-l3); }
+}
+@media (max-width: 767px) {
+  .app-shell { padding: 0 0 80px; }
+  .shell-sidebar, .shell-location { display: none; }
+  .mobile-brand { display: block; }
+  .shell-top { padding: var(--space-2) var(--space-4); }
+  .shell-preferences { gap: var(--space-2); }
+  .workspace { padding: var(--space-6) var(--space-4); }
+  .question-group { grid-template-columns: 1fr; gap: var(--space-2); }
+  .ask-composer textarea { min-height: 96px; }
+  .strategy-tabs { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .strategy-columns { display: block; }
+  .strategy-pane:not(.selected) { display: none; }
+  .shell-bottom { position: fixed; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); inset: auto 0 0; padding: var(--space-2) var(--space-1) max(var(--space-2), env(safe-area-inset-bottom)); z-index: 20; }
+  .shell-bottom .nav-link { flex-direction: column; gap: var(--space-1); padding: var(--space-1); min-height: 48px; font-size: var(--type-xs); }
+  .shell-bottom .nav-link.active { box-shadow: inset 0 -2px var(--ink); }
+  button, select, summary, a:not(.answer-content a) { min-height: 44px; min-width: 44px; }
+  input:not([type="checkbox"]):not([type="radio"]) { min-height: 44px; }
+  label:has(input[type="checkbox"]), label:has(input[type="radio"]) { min-height: 44px; }
+}

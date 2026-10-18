@@ -1,0 +1,319 @@
+"""Tests for the evaluation harness.
+
+The central property here is the failure policy: a judge that cannot score an
+answer must produce no score at all, never a plausible midpoint. On an
+evaluation platform, a fabricated 0.5 is worse than a missing number.
+"""
+import json
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
+from litmus.evaluation.judge import JudgeOutcome, _extract_json, judge
+from litmus.evaluation.metrics import (
+    aggregate,
+    load_dataset,
+    run_evaluation,
+    score_example,
+)
+from litmus.evaluation.regression import find_baseline, get_run
+from litmus.schemas import Answer, EvalScore, Source
+
+SCORES = {
+    "faithfulness": 0.9,
+    "answer_relevance": 0.8,
+    "context_precision": 0.7,
+    "context_recall": 0.6,
+}
+
+
+def _verdict(scores=None, **overrides) -> dict:
+    """A structured judge reply: per dimension, a score and its reasoning."""
+    body = {
+        dim: {"score": value, "reasoning": f"why {dim}"}
+        for dim, value in (scores or SCORES).items()
+    }
+    body.update(overrides)
+    return body
+
+
+def _fake_answer(text="a"):
+    """A real Answer: _run_example reads its attributes, not just model_dump()."""
+    return Answer(
+        question="q",
+        answer=text,
+        sources=[Source(chunk_id="none", quote="")],
+        confidence=0.9,
+        model="claude-sonnet-5",
+        latency_ms=1000,
+        input_tokens=500,
+        output_tokens=100,
+    )
+
+
+def _judge_reply(payload: str, tokens=(10, 10)):
+    return {"text": payload, "input_tokens": tokens[0], "output_tokens": tokens[1]}
+
+
+class TestExtractJson:
+    def test_plain_object(self):
+        assert _extract_json('{"a": 1}') == {"a": 1}
+
+    def test_fenced_object(self):
+        assert _extract_json('```json\n{"a": 1}\n```') == {"a": 1}
+
+    def test_object_wrapped_in_prose(self):
+        assert _extract_json('Sure!\n{"a": 1}\nHope that helps.') == {"a": 1}
+
+    def test_rejects_non_json(self):
+        with pytest.raises(ValueError):
+            _extract_json("I am not JSON at all.")
+
+    def test_rejects_a_bare_array(self):
+        with pytest.raises(ValueError, match="expected an object"):
+            _extract_json("[1, 2, 3]")
+
+
+@pytest.mark.asyncio
+class TestJudge:
+    async def test_returns_scores_on_a_well_formed_reply(self):
+        reply = _judge_reply(json.dumps(_verdict()))
+        with patch(
+            "litmus.evaluation.judge.generate_with_usage", new=AsyncMock(return_value=reply)
+        ):
+            result = await judge("q", "a", ["ctx"])
+
+        assert result is not None
+        assert result["faithfulness"] == 0.9
+        assert result["reasoning_by_dimension"]["faithfulness"] == "why faithfulness"
+        assert "why context_recall" in result["reasoning"]
+
+    async def test_rejects_out_of_range_scores_instead_of_clamping(self):
+        """A 1.7 is a broken reply, not a 1.0: clamping would hide the fault."""
+        bad = _verdict({**SCORES, "faithfulness": 1.7, "context_recall": -0.4})
+        with patch(
+            "litmus.evaluation.judge.generate_with_usage",
+            new=AsyncMock(return_value=_judge_reply(json.dumps(bad))),
+        ):
+            assert await judge("q", "a", ["ctx"]) is None
+
+    async def test_returns_none_when_the_provider_fails(self):
+        """The regression this guards: a failed judge must not become a 0.5."""
+        with patch(
+            "litmus.evaluation.judge.generate_with_usage",
+            new=AsyncMock(side_effect=RuntimeError("API down")),
+        ):
+            assert await judge("q", "a", ["ctx"]) is None
+
+    async def test_returns_none_on_unparseable_output(self):
+        with patch(
+            "litmus.evaluation.judge.generate_with_usage",
+            new=AsyncMock(return_value=_judge_reply("the answer was pretty good")),
+        ):
+            assert await judge("q", "a", ["ctx"]) is None
+
+    async def test_returns_none_when_a_dimension_is_missing(self):
+        partial = _verdict({k: v for k, v in SCORES.items() if k != "context_recall"})
+        with patch(
+            "litmus.evaluation.judge.generate_with_usage",
+            new=AsyncMock(return_value=_judge_reply(json.dumps(partial))),
+        ):
+            assert await judge("q", "a", ["ctx"]) is None
+
+    async def test_returns_none_when_a_score_is_not_numeric(self):
+        bad = _verdict({**SCORES, "faithfulness": "very high"})
+        with patch(
+            "litmus.evaluation.judge.generate_with_usage",
+            new=AsyncMock(return_value=_judge_reply(json.dumps(bad))),
+        ):
+            assert await judge("q", "a", ["ctx"]) is None
+
+
+@pytest.mark.asyncio
+class TestScoreExample:
+    async def test_builds_an_evalscore(self):
+        with patch("litmus.evaluation.metrics.judge", new=AsyncMock(return_value=dict(SCORES))):
+            score = await score_example(
+                {"question": "q"}, {"answer": "a", "sources": [{"quote": "ctx"}]}
+            )
+        assert isinstance(score, EvalScore)
+        assert score.faithfulness == 0.9
+
+    async def test_propagates_an_unscorable_example_as_none(self):
+        with patch("litmus.evaluation.metrics.judge", new=AsyncMock(return_value=None)):
+            assert await score_example({"question": "q"}, {"answer": "a"}) is None
+
+
+class TestAggregate:
+    def test_averages_each_dimension(self):
+        agg = aggregate([SCORES, dict.fromkeys(SCORES, 0.5)])
+        assert agg.faithfulness == pytest.approx(0.7)
+        assert agg.context_recall == pytest.approx(0.55)
+
+    def test_returns_none_for_an_empty_list(self):
+        assert aggregate([]) is None
+
+    def test_single_score_round_trips(self):
+        assert aggregate([SCORES]).faithfulness == 0.9
+
+
+class TestLoadDataset:
+    def test_missing_dataset_is_empty(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("litmus.evaluation.metrics.GOLDEN_DIR", tmp_path)
+        assert load_dataset("nope") == []
+
+    def test_blank_lines_are_skipped(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("litmus.evaluation.metrics.GOLDEN_DIR", tmp_path)
+        (tmp_path / "d.jsonl").write_text(
+            '{"question": "a"}\n\n{"question": "b"}\n', encoding="utf-8"
+        )
+        assert len(load_dataset("d")) == 2
+
+    def test_malformed_line_names_the_line_number(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("litmus.evaluation.metrics.GOLDEN_DIR", tmp_path)
+        (tmp_path / "d.jsonl").write_text('{"question": "a"}\n{oops\n', encoding="utf-8")
+        with pytest.raises(ValueError, match="line 2"):
+            load_dataset("d")
+
+    def test_the_shipped_golden_dataset_parses(self):
+        examples = load_dataset("golden_v1")
+        assert examples, "golden_v1 should ship with examples"
+        assert all("question" in ex for ex in examples)
+
+
+@pytest.mark.asyncio
+class TestRunEvaluation:
+    async def test_unscored_examples_are_counted_and_excluded(
+        self, tmp_path, monkeypatch
+    ):
+        """Two examples, one unscorable: the aggregate must reflect only the scored one."""
+        monkeypatch.setattr("litmus.evaluation.metrics.GOLDEN_DIR", tmp_path)
+        monkeypatch.setattr("litmus.evaluation.metrics.RUNS_DIR", tmp_path / "runs")
+        (tmp_path / "d.jsonl").write_text(
+            '{"question": "one"}\n{"question": "two"}\n', encoding="utf-8"
+        )
+
+        answer = AsyncMock(return_value=(_fake_answer(), None))
+
+        outcomes = [
+            JudgeOutcome(scores={**SCORES, "answer_correctness": None}, attempts=1),
+            JudgeOutcome.failed("JudgeOutputInvalid", "faithfulness: missing", attempts=2),
+        ]
+        with (
+            patch("litmus.evaluation.metrics.answer_question_detailed", new=answer),
+            patch(
+                "litmus.evaluation.metrics.score_example_detailed",
+                new=AsyncMock(side_effect=outcomes),
+            ),
+        ):
+            result = await run_evaluation(dataset="d")
+
+        assert result["n"] == 2
+        assert result["n_scored"] == 1
+        assert result["n_unscored"] == 1
+        assert result["n_judge_failed"] == 1
+        assert result["aggregate"]["faithfulness"] == 0.9
+        assert result["aggregates"]["faithfulness"] == {"mean": 0.9, "std": None, "n": 1}
+        assert [p["score"] for p in result["per_example"]].count(None) == 1
+        assert result["failures"] == [
+            {
+                "id": "q002",
+                "question": "two",
+                "stage": "judge",
+                "error_type": "JudgeOutputInvalid",
+                "error": "faithfulness: missing",
+            }
+        ]
+
+    async def test_aggregate_is_none_when_nothing_scored(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("litmus.evaluation.metrics.GOLDEN_DIR", tmp_path)
+        monkeypatch.setattr("litmus.evaluation.metrics.RUNS_DIR", tmp_path / "runs")
+        (tmp_path / "d.jsonl").write_text('{"question": "one"}\n', encoding="utf-8")
+
+        answer = AsyncMock(return_value=(_fake_answer(), None))
+
+        with (
+            patch("litmus.evaluation.metrics.answer_question_detailed", new=answer),
+            patch(
+                "litmus.evaluation.metrics.score_example_detailed",
+                new=AsyncMock(return_value=JudgeOutcome.failed("ProviderError", "down")),
+            ),
+        ):
+            result = await run_evaluation(dataset="d")
+
+        assert result["aggregate"] is None
+        assert result["n_unscored"] == 1
+
+    async def test_missing_dataset_reports_an_error(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("litmus.evaluation.metrics.GOLDEN_DIR", tmp_path)
+        result = await run_evaluation(dataset="does-not-exist")
+        assert result["n"] == 0
+        assert "error" in result
+
+
+class TestRegressionBaseline:
+    """Runs are only comparable when their whole configuration matches."""
+
+    @staticmethod
+    def _write(dir_path, name, *, model, faithfulness, dataset="golden_v1"):
+        (dir_path / f"{name}.json").write_text(
+            json.dumps(
+                {
+                    "dataset": dataset,
+                    "provider": "anthropic",
+                    "model": model,
+                    "prompt_version": "default",
+                    "aggregate": {**SCORES, "faithfulness": faithfulness},
+                    "created_at": "2026-01-01T00:00:00+00:00",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    def test_previous_run_of_the_same_configuration_is_the_baseline(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("litmus.evaluation.regression.RUNS_DIR", tmp_path)
+        self._write(tmp_path, "20260101T000000Z-a", model="m1", faithfulness=0.9)
+        self._write(tmp_path, "20260102T000000Z-b", model="m1", faithfulness=0.5)
+
+        baseline, source = find_baseline(get_run("20260102T000000Z-b"))
+        assert source == "previous"
+        assert baseline["id"] == "20260101T000000Z-a"
+
+    def test_different_models_are_not_compared(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("litmus.evaluation.regression.RUNS_DIR", tmp_path)
+        self._write(tmp_path, "20260101T000000Z-a", model="haiku", faithfulness=0.9)
+        self._write(tmp_path, "20260102T000000Z-b", model="opus", faithfulness=0.4)
+
+        assert find_baseline(get_run("20260102T000000Z-b")) == (None, None)
+
+    def test_different_datasets_are_not_compared(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("litmus.evaluation.regression.RUNS_DIR", tmp_path)
+        self._write(tmp_path, "20260101T000000Z-a", model="m1", faithfulness=0.9)
+        self._write(
+            tmp_path, "20260102T000000Z-b", model="m1", faithfulness=0.4, dataset="v2"
+        )
+
+        assert find_baseline(get_run("20260102T000000Z-b")) == (None, None)
+
+    def test_runs_without_an_aggregate_are_not_baselines(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("litmus.evaluation.regression.RUNS_DIR", tmp_path)
+        (tmp_path / "20260101T000000Z-a.json").write_text(
+            json.dumps({"dataset": "golden_v1", "model": "m1", "aggregate": None}),
+            encoding="utf-8",
+        )
+        (tmp_path / "20260102T000000Z-b.json").write_text(
+            json.dumps({"dataset": "golden_v1", "model": "m1", "aggregate": SCORES}),
+            encoding="utf-8",
+        )
+
+        assert find_baseline(get_run("20260102T000000Z-b")) == (None, None)
+
+    def test_unreadable_files_do_not_break_the_lookup(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("litmus.evaluation.regression.RUNS_DIR", tmp_path)
+        self._write(tmp_path, "20260101T000000Z-a", model="m1", faithfulness=0.9)
+        (tmp_path / "20260102T000000Z-corrupt.json").write_text("{not json", encoding="utf-8")
+        self._write(tmp_path, "20260103T000000Z-c", model="m1", faithfulness=0.8)
+
+        baseline, _ = find_baseline(get_run("20260103T000000Z-c"))
+        assert baseline["id"] == "20260101T000000Z-a"
+
